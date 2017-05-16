@@ -2,15 +2,15 @@
 # -*- coding: utf-8 -*-
 
 #
-# Tag/enrich indexed documents with URIs, aliases & synonyms from new or changed SKOS thesaurus or RDF(S) ontology
+# Tag / enrich indexed documents with URIs, aliases & synonyms from new or changed SKOS thesaurus or RDF(S) ontology
 #
 
-# Tool to apply new thesauri with some douzen, some hundret or some thousand entries or new entries to existing index
+# Tool to apply new thesauri with some dozens, some hundret or some thousand entries or new entries to existing index
 
 # This way will take too much time for very big thesauri or ontologies with many entries
 # since every subject will need one query and a change of all affected documents
 
-# For very big dictionaries/ontologies with many entries config/use an ETL or data enrichment plugin for ontology annotation/tagging before/while indexing
+# For very big dictionaries / ontologies with many entries config/use an ETL or data enrichment plugin for ontology annotation / tagging before / while indexing
 
 
 import logging
@@ -28,7 +28,26 @@ owl = Namespace('http://www.w3.org/2002/07/owl#')
 
 logging.basicConfig()
 
-# add value to facet of data array if not there yet
+
+# append labels to synonyms configfile
+
+def append_labels_to_synonyms_configfile(rdf_labels):
+
+	labels = []
+	for label in rdf_labels:
+		labels.append(label[1])
+			
+	synonyms_configfile = open(self.synonyms_configfile, 'a')
+
+ 	# append all labels comma separated and with endline
+	synonyms_configfile.write(','.join(labels).encode('UTF-8') + '\n')
+
+	synonyms_configfile.close()
+
+#
+# add value to facet of data array, if not there yet
+#
+
 def add_value_to_facet(facet, value, data = None ):
 
 	if not data:
@@ -73,11 +92,6 @@ def labels_to_query(labels):
 
 class OntologyTagger(Graph):
 
-	#
-	# get all labels, alternate labels and synonyms for the URI/subject
-	#
-	
-	
 	# defaults
 	verbose = False
 	
@@ -85,8 +99,13 @@ class OntologyTagger(Graph):
 	source_facet = '_text_'
 	target_facet = 'tag_ss'
 	
+	synonyms_embed_to_document = False
+	synonyms_configfile = False
 	
-	# get all labels
+	#
+	# get all labels, alternate labels and synonyms for the URI/subject
+	#
+
 	def get_labels(self, s):
 	
 		labels = self.preferredLabel(subject=s, labelProperties=(rdflib.term.URIRef(u'http://www.w3.org/2004/02/skos/core#prefLabel'), rdflib.term.URIRef(u'http://www.w3.org/2000/01/rdf-schema#label'), rdflib.term.URIRef(u'http://www.w3.org/2004/02/skos/core#altLabel'), rdflib.term.URIRef(u'http://www.w3.org/2004/02/skos/core#hiddenLabel')))
@@ -101,7 +120,6 @@ class OntologyTagger(Graph):
 	def tag_documents_with_concept(self, s, target_facet='tag_ss', source_facet='_text_', lang='en', narrower=True):
 			
 		# get all Labels for this subject
-		#labels = self.get_labels(s)
 		labels = self.get_labels(s)
 
 		#
@@ -119,7 +137,7 @@ class OntologyTagger(Graph):
 
 			# normalized/best/preferred label  to facet for normalized label
 
-			preferred_label= None
+			preferred_label = None
 
 			preferred_label = self.preferredLabel(subject=s, lang=lang, labelProperties=(rdflib.term.URIRef(u'http://www.w3.org/2004/02/skos/core#prefLabel'), rdflib.term.URIRef(u'http://www.w3.org/2000/01/rdf-schema#label'), rdflib.term.URIRef(u'http://www.w3.org/2004/02/skos/core#altLabel')))
 
@@ -139,14 +157,6 @@ class OntologyTagger(Graph):
 
 
 			#
-			# Alternate labels and synonyms
-			#
-
-			for label in labels:
-				tagdata = add_value_to_facet(facet = target_facet + '_synonyms_ss', value = label[1], data=tagdata)
-
-
-			#
 			# Linked concepts
 			#
 			
@@ -154,14 +164,10 @@ class OntologyTagger(Graph):
 			# by SKOS:exactMatch or OWL:sameAs
 
 			for o in self.objects(s, skos['exactMatch']):
-				labels = self.get_labels(o)
-				for label in labels:
-					tagdata = add_value_to_facet(facet = target_facet+'_synonyms_ss', value = label[1], data=tagdata)
+				labels.append( self.get_labels(o) )
 
 			for o in self.objects(s, owl['sameAs']):
-				labels = self.get_labels(o)
-				for label in labels:
-					tagdata = add_value_to_facet(facet = target_facet+'_synonyms_ss', value = label[1], data=tagdata)
+				labels.append( self.get_labels(o) )
 
 	
 			# Todo: deeper than first degree (recursive with stack to prevent loops)
@@ -169,14 +175,32 @@ class OntologyTagger(Graph):
 			if narrower:
 				
 				for o in self.objects(s, skos['narrower']):
-					labels = self.get_labels(o)
-					for label in labels:
-						tagdata = add_value_to_facet(facet = target_facet + '_synonyms_ss', value = label[1], data=tagdata)
+					labels.append (self.get_labels(o) )
 
 				for o in self.objects(s, skos['narrowMatch']):
-					labels = self.get_labels(o)
-					for label in labels:
-						tagdata = add_value_to_facet(facet = target_facet + '_synonyms_ss', value = label[1], data=tagdata)
+					labels.append (self.get_labels(o) )
+
+
+			#
+			# Add alternate labels and synonyms
+			#
+			# - to document (word embedding) 
+			# - and / or to synonym config (mapping)
+			#
+
+			if self.synonyms_configfile or self.synonyms_embed_to_document:
+
+				if len(labels) > 1:
+
+					if self.synonyms_embed_to_document:
+
+						for label in labels:
+		
+							tagdata = add_value_to_facet(facet = target_facet + '_synonyms_ss', value = label[1], data=tagdata)
+						
+					if self.synonyms_configfile:
+							
+							append_labels_to_synonyms_configfile(labels)
 
 
 			# build lucene query to search for at least one label of all labels
@@ -192,7 +216,7 @@ class OntologyTagger(Graph):
 
 
 	#
-	# tag the documents on Solr server with all found entities (IDs / synonyms / aliases) of the ontology	
+	# For all found entities (IDs / synonyms / aliases) of the ontology, tag the matching documents in index
 	#
 	
 	def tag_documents(self, target_facet='tag_ss', source_facet='_text_', lang='en', narrower=True):
@@ -220,7 +244,7 @@ class OntologyTagger(Graph):
 # Read command line arguments and start tagging
 #
 
-#if running (not imported to use its functions), run main function
+# if running (not imported to use its functions), run main function
 if __name__ == "__main__":
 
 	#get filenames from command line args
