@@ -29,7 +29,7 @@ owl = Namespace('http://www.w3.org/2002/07/owl#')
 logging.basicConfig()
 
 
-# append labels to synonyms configfile
+# append labels to synonyms config file
 
 def append_labels_to_synonyms_configfile(rdf_labels):
 
@@ -43,6 +43,7 @@ def append_labels_to_synonyms_configfile(rdf_labels):
 	synonyms_configfile.write(','.join(labels).encode('UTF-8') + '\n')
 
 	synonyms_configfile.close()
+
 
 #
 # add value to facet of data array, if not there yet
@@ -117,7 +118,7 @@ class OntologyTagger(Graph):
 	# tag the concept with URI/subject s to target_facet of all documents including at least of the labels
 	#
 
-	def tag_documents_with_concept(self, s, target_facet='tag_ss', source_facet='_text_', lang='en', narrower=True):
+	def tag_documents_with_concept(self, s, target_facet=self.target_facet, source_facet=self.source_facet, lang='en', narrower=True):
 			
 		# get all Labels for this subject
 		labels = self.get_labels(s)
@@ -219,7 +220,7 @@ class OntologyTagger(Graph):
 	# For all found entities (IDs / synonyms / aliases) of the ontology, tag the matching documents in index
 	#
 	
-	def tag_documents(self, target_facet='tag_ss', source_facet='_text_', lang='en', narrower=True):
+	def tag_documents(self, target_facet=self.target_facet, source_facet=self.source_facet, lang='en', narrower=True):
 	
 		# since this is returing subjects more than one time ...
 		#for s in g.subjects(predicate=None, object=None):
@@ -252,9 +253,10 @@ if __name__ == "__main__":
 	from optparse import OptionParser
 
 	parser = OptionParser("solr-ontology-tagger ontology-filename")
-	parser.add_option("-u", "--solr-uri", dest="solr", default=None, help="Facet/Field to tag to")
-	parser.add_option("-f", "--facet", dest="facet", default="tag_ss", help="Facet/Field to tag to")
-	parser.add_option("-l", "--lang", dest="lang", default="en", help="Language for normalized/preferred label")
+	parser.add_option("-u", "--solr-uri", dest="solr", default=None, help="URI of Solr server and index, where to tag documents")
+	parser.add_option("-s", "--synonyms_configfile", dest="synonyms_configfile", default=None, help="Solr synonyms config file to append synonyms")
+	parser.add_option("-f", "--facet", dest="facet", default="tag_ss", help="Facet / field to tag to")
+	parser.add_option("-l", "--lang", dest="lang", default="en", help="Language for normalized / preferred label")
 	parser.add_option("-n", "--narrower", dest="narrower", action="store_true", default=True, help="Tag with narrower concepts, too")
 	parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=None, help="Print debug messages")
 
@@ -272,6 +274,9 @@ if __name__ == "__main__":
 
 	if options.solr:
 		ontology_tagger.solr = options.solr
+
+	if options.synonyms_configfile:
+		ontology_tagger.synonyms_configfile = options.synonyms_configfile
 	
 	if options.verbose == False or options.verbose==True:
 		ontology_tagger.verbose=options.verbose
