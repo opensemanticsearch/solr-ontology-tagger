@@ -287,4 +287,4 @@ if __name__ == "__main__":
 	ontology_tagger.parse(ontology)
 
 	# tag the documents on Solr server with all entities in the ontology	
-	ontology_tagger.tag_documents(target_facet=options.facet, source_facet=options.facet, lang=options.lang, narrower=options.narrower)
+	ontology_tagger.tag_documents(target_facet=options.facet, source_facet=options.source_facet, lang=options.lang, narrower=options.narrower)
