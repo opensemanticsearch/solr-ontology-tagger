@@ -31,13 +31,13 @@ logging.basicConfig()
 
 # append labels to synonyms config file
 
-def append_labels_to_synonyms_configfile(rdf_labels):
+def append_labels_to_synonyms_configfile(rdf_labels, synonyms_configfile):
 
 	labels = []
 	for label in rdf_labels:
 		labels.append(label[1])
 			
-	synonyms_configfile = open(self.synonyms_configfile, 'a')
+	synonyms_configfile = open(synonyms_configfile, 'a')
 
  	# append all labels comma separated and with endline
 	synonyms_configfile.write(','.join(labels).encode('UTF-8') + '\n')
@@ -118,7 +118,7 @@ class OntologyTagger(Graph):
 	# tag the concept with URI/subject s to target_facet of all documents including at least of the labels
 	#
 
-	def tag_documents_with_concept(self, s, target_facet=self.target_facet, source_facet=self.source_facet, lang='en', narrower=True):
+	def tag_documents_with_concept(self, s, target_facet, source_facet, lang='en', narrower=True):
 			
 		# get all Labels for this subject
 		labels = self.get_labels(s)
@@ -165,10 +165,10 @@ class OntologyTagger(Graph):
 			# by SKOS:exactMatch or OWL:sameAs
 
 			for o in self.objects(s, skos['exactMatch']):
-				labels.append( self.get_labels(o) )
+				labels.extend( self.get_labels(o) )
 
 			for o in self.objects(s, owl['sameAs']):
-				labels.append( self.get_labels(o) )
+				labels.extend( self.get_labels(o) )
 
 	
 			# Todo: deeper than first degree (recursive with stack to prevent loops)
@@ -176,10 +176,10 @@ class OntologyTagger(Graph):
 			if narrower:
 				
 				for o in self.objects(s, skos['narrower']):
-					labels.append (self.get_labels(o) )
+					labels.extend( self.get_labels(o) )
 
 				for o in self.objects(s, skos['narrowMatch']):
-					labels.append (self.get_labels(o) )
+					labels.extend( self.get_labels(o) )
 
 
 			#
@@ -201,7 +201,7 @@ class OntologyTagger(Graph):
 						
 					if self.synonyms_configfile:
 							
-							append_labels_to_synonyms_configfile(labels)
+							append_labels_to_synonyms_configfile(labels, self.synonyms_configfile)
 
 
 			# build lucene query to search for at least one label of all labels
@@ -220,7 +220,7 @@ class OntologyTagger(Graph):
 	# For all found entities (IDs / synonyms / aliases) of the ontology, tag the matching documents in index
 	#
 	
-	def tag_documents(self, target_facet=self.target_facet, source_facet=self.source_facet, lang='en', narrower=True):
+	def tag_documents(self, target_facet, source_facet="_text_", lang='en', narrower=True):
 	
 		# since this is returing subjects more than one time ...
 		#for s in g.subjects(predicate=None, object=None):
@@ -255,6 +255,7 @@ if __name__ == "__main__":
 	parser = OptionParser("solr-ontology-tagger ontology-filename")
 	parser.add_option("-u", "--solr-uri", dest="solr", default=None, help="URI of Solr server and index, where to tag documents")
 	parser.add_option("-s", "--synonyms_configfile", dest="synonyms_configfile", default=None, help="Solr synonyms config file to append synonyms")
+	parser.add_option("-a", "--sourcefacet", dest="source_facet", default="_text_", help="Facet / field to analyze")
 	parser.add_option("-f", "--facet", dest="facet", default="tag_ss", help="Facet / field to tag to")
 	parser.add_option("-l", "--lang", dest="lang", default="en", help="Language for normalized / preferred label")
 	parser.add_option("-n", "--narrower", dest="narrower", action="store_true", default=True, help="Tag with narrower concepts, too")
@@ -286,4 +287,4 @@ if __name__ == "__main__":
 	ontology_tagger.parse(ontology)
 
 	# tag the documents on Solr server with all entities in the ontology	
-	ontology_tagger.tag_documents(target_facet=options.facet, lang=options.lang, narrower=options.narrower)
+	ontology_tagger.tag_documents(target_facet=options.facet, source_facet=options.facet, lang=options.lang, narrower=options.narrower)
