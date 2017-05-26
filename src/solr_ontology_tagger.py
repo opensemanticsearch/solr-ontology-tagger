@@ -31,11 +31,16 @@ logging.basicConfig()
 
 # append labels to synonyms config file
 
-def append_labels_to_synonyms_configfile(rdf_labels, synonyms_configfile):
+def append_rdflabels_to_synonyms_configfile(rdf_labels, synonyms_configfile):
 
 	labels = []
 	for label in rdf_labels:
 		labels.append(label[1])
+	
+	append_labels_to_synonyms_configfile(labels, synonyms_configfile)
+
+
+def append_labels_to_synonyms_configfile(labels, synonyms_configfile):
 			
 	synonyms_configfile = open(synonyms_configfile, 'a')
 
