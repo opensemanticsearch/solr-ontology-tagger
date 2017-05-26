@@ -206,7 +206,7 @@ class OntologyTagger(Graph):
 						
 					if self.synonyms_configfile:
 							
-							append_labels_to_synonyms_configfile(labels, self.synonyms_configfile)
+							append_rdflabels_to_synonyms_configfile(labels, self.synonyms_configfile)
 
 			# If Solr server for tagging set
 			# which is not, if only export of synonyms without tagging of documents in index
