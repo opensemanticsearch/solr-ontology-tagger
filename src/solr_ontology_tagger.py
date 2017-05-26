@@ -220,10 +220,12 @@ class OntologyTagger(Graph):
 
 
 	#
-	# For all found entities (IDs / synonyms / aliases) of the ontology, tag the matching documents in index
+	# For all found entities (IDs / synonyms / aliases) of the ontology:
+	# - write synonyms config
+	# - tag the matching documents in index
 	#
 	
-	def tag_documents(self, target_facet, source_facet="_text_", lang='en', narrower=True):
+	def apply(self, target_facet, source_facet="_text_", lang='en', narrower=True):
 	
 		# since this is returing subjects more than one time ...
 		#for s in g.subjects(predicate=None, object=None):
@@ -290,4 +292,4 @@ if __name__ == "__main__":
 	ontology_tagger.parse(ontology)
 
 	# tag the documents on Solr server with all entities in the ontology	
-	ontology_tagger.tag_documents(target_facet=options.facet, source_facet=options.source_facet, lang=options.lang, narrower=options.narrower)
+	ontology_tagger.apply(target_facet=options.facet, source_facet=options.source_facet, lang=options.lang, narrower=options.narrower)
