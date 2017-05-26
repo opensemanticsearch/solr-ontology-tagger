@@ -118,7 +118,7 @@ class OntologyTagger(Graph):
 	# tag the concept with URI/subject s to target_facet of all documents including at least of the labels
 	#
 
-	def tag_documents_with_concept(self, s, target_facet, source_facet, lang='en', narrower=True):
+	def tag_documents_with_concept(self, s, target_facet='tag_ss', source_facet="_text_", lang='en', narrower=True):
 			
 		# get all Labels for this subject
 		labels = self.get_labels(s)
@@ -203,17 +203,20 @@ class OntologyTagger(Graph):
 							
 							append_labels_to_synonyms_configfile(labels, self.synonyms_configfile)
 
-
-			# build lucene query to search for at least one label of all labels
-			query = labels_to_query(labels)
-
-			# search only in source facet
-			query = source_facet + ':(' + query + ')'
-
-			# tag (add facets and values) documents matching this query with this URIs & labels
-			connector = etl.export_solr.export_solr()
-			connector.verbose = self.verbose
-			count =  connector.update_by_query(query=query, data=tagdata)
+			# If Solr server for tagging set
+			# which is not, if only export of synonyms without tagging of documents in index
+			if self.solr:
+				
+				# build lucene query to search for at least one label of all labels
+				query = labels_to_query(labels)
+	
+				# search only in source facet
+				query = source_facet + ':(' + query + ')'
+	
+				# tag (add facets and values) documents matching this query with this URIs & labels
+				connector = etl.export_solr.export_solr()
+				connector.verbose = self.verbose
+				count =  connector.update_by_query(query=query, data=tagdata)
 
 
 	#
