@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
 #
@@ -42,10 +42,10 @@ def append_rdflabels_to_synonyms_configfile(rdf_labels, synonyms_configfile):
 
 def append_labels_to_synonyms_configfile(labels, synonyms_configfile):
 			
-	synonyms_configfile = open(synonyms_configfile, 'a')
+	synonyms_configfile = open(synonyms_configfile, 'a', encoding="utf-8")
 
  	# append all labels comma separated and with endline
-	synonyms_configfile.write(','.join(labels).encode('UTF-8') + '\n')
+	synonyms_configfile.write(','.join(labels) + '\n')
 
 	synonyms_configfile.close()
 
@@ -230,7 +230,7 @@ class OntologyTagger(Graph):
 	# - tag the matching documents in index
 	#
 	
-	def apply(self, target_facet, source_facet="_text_", lang='en', narrower=True):
+	def apply(self, target_facet="tag_ss", source_facet="_text_", lang='en', narrower=True):
 	
 		# since this is returing subjects more than one time ...
 		#for s in g.subjects(predicate=None, object=None):
