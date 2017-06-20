@@ -20,7 +20,7 @@ from rdflib import Graph
 from rdflib import RDFS
 from rdflib import Namespace
 
-import etl.export_solr
+import opensemanticetl.export_solr
 
 # define used ontologies / standards / properties
 skos = Namespace('http://www.w3.org/2004/02/skos/core#')
@@ -91,7 +91,7 @@ def labels_to_query(labels):
 			query += " OR "
 
 		# embed label in phrase by " and mask special/reserved char for Solr
-		query += "\"" + etl.export_solr.solr_mask(label) + "\""
+		query += "\"" + opensemanticetl.export_solr.solr_mask(label) + "\""
 
 	return query
 
@@ -219,7 +219,7 @@ class OntologyTagger(Graph):
 				query = source_facet + ':(' + query + ')'
 	
 				# tag (add facets and values) documents matching this query with this URIs & labels
-				connector = etl.export_solr.export_solr()
+				connector = opensemanticetl.export_solr.export_solr()
 				connector.verbose = self.verbose
 				count =  connector.update_by_query(query=query, data=tagdata)
 
