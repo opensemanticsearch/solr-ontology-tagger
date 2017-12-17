@@ -107,7 +107,11 @@ class OntologyTagger(Graph):
 	
 	synonyms_embed_to_document = False
 	synonyms_configfile = False
+	wordlist_configfile = False
+
+	appended_words = []
 	
+
 	#
 	# get all labels, alternate labels and synonyms for the URI/subject
 	#
@@ -185,6 +189,27 @@ class OntologyTagger(Graph):
 
 				for o in self.objects(s, skos['narrowMatch']):
 					labels.extend( self.get_labels(o) )
+
+			
+			#
+			# Append single words of concept labels to wordlist for OCR word dictionary
+			#
+
+			if self.wordlist_configfile:
+
+				wordlist_file = open(self.wordlist_configfile, 'a', encoding="UTF-8")
+
+				for label in labels:
+					label = str(label[1])
+					words = label.split()
+					for word in words:
+						word = word.strip("(),")
+						if word:
+							if word not in self.appended_words:
+								self.appended_words.append(word)
+								wordlist_file.write(word + "\n")
+								wordlist_file.write(word.upper() + "\n")
+				wordlist_file.close()
 
 
 			#
@@ -265,6 +290,7 @@ if __name__ == "__main__":
 	parser = OptionParser("solr-ontology-tagger ontology-filename")
 	parser.add_option("-u", "--solr-uri", dest="solr", default=None, help="URI of Solr server and index, where to tag documents")
 	parser.add_option("-s", "--synonyms_configfile", dest="synonyms_configfile", default=None, help="Solr synonyms config file to append synonyms")
+	parser.add_option("-w", "--wordlist_configfile", dest="wordlist_configfile", default=None, help="OCR wordlist/dictionary config file to append words")
 	parser.add_option("-a", "--sourcefacet", dest="source_facet", default="_text_", help="Facet / field to analyze")
 	parser.add_option("-f", "--facet", dest="facet", default="tag_ss", help="Facet / field to tag to")
 	parser.add_option("-l", "--lang", dest="lang", default="en", help="Language for normalized / preferred label")
@@ -288,7 +314,10 @@ if __name__ == "__main__":
 
 	if options.synonyms_configfile:
 		ontology_tagger.synonyms_configfile = options.synonyms_configfile
-	
+
+	if options.wordlist_configfile:
+		ontology_tagger.wordlist_configfile = options.wordlist_configfile
+
 	if options.verbose == False or options.verbose==True:
 		ontology_tagger.verbose=options.verbose
 
