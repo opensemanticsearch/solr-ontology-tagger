@@ -108,6 +108,7 @@ class OntologyTagger(Graph):
 	synonyms_embed_to_document = False
 	synonyms_configfile = False
 	wordlist_configfile = False
+	labels_configfile = False
 
 	appended_words = []
 	
@@ -190,6 +191,21 @@ class OntologyTagger(Graph):
 				for o in self.objects(s, skos['narrowMatch']):
 					labels.extend( self.get_labels(o) )
 
+
+			#
+			# Append labes to list for dictionary based named entity extraction
+			#
+
+			if self.labels_configfile:
+
+				labels_file = open(self.labels_configfile, 'a', encoding="utf-8")
+
+				for label in labels:
+					label = str(label[1])
+					labels_file.write(label + "\n")
+
+				labels_file.close()
+
 			
 			#
 			# Append single words of concept labels to wordlist for OCR word dictionary
@@ -207,6 +223,7 @@ class OntologyTagger(Graph):
 						if word:
 							if word not in self.appended_words:
 								self.appended_words.append(word)
+								self.appended_words.append(word.upper())
 								wordlist_file.write(word + "\n")
 								wordlist_file.write(word.upper() + "\n")
 				wordlist_file.close()
