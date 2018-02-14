@@ -5,7 +5,7 @@
 # Tag / enrich indexed documents with URIs, aliases & synonyms from new or changed SKOS thesaurus or RDF(S) ontology
 #
 
-# Tool to apply new thesauri with some dozens, some hundret or some thousand entries or new entries to existing index
+# Tool to apply new thesauri with some dozens, some hundred or some thousand entries or new entries to existing index
 
 # This way will take too much time for very big thesauri or ontologies with many entries
 # since every subject will need one query and a change of all affected documents
@@ -30,16 +30,6 @@ logging.basicConfig()
 
 
 # append labels to synonyms config file
-
-def append_rdflabels_to_synonyms_configfile(rdf_labels, synonyms_configfile):
-
-	labels = []
-	for label in rdf_labels:
-		labels.append(label[1])
-	
-	append_labels_to_synonyms_configfile(labels, synonyms_configfile)
-
-
 def append_labels_to_synonyms_configfile(labels, synonyms_configfile):
 			
 	synonyms_configfile = open(synonyms_configfile, 'a', encoding="utf-8")
@@ -80,10 +70,7 @@ def labels_to_query(labels):
 	first = True
 	
 	for label in labels:
-		
-		# rdflibs prefferedLabels returns RDF labels are returned as tuples with type and label, we need the label only
-		label = label[1]
-		
+				
 		# if not the first label of query, add an OR operator and delimiter in between
 		if first:
 			first = False
@@ -96,6 +83,7 @@ def labels_to_query(labels):
 	return query
 
 
+
 class OntologyTagger(Graph):
 
 	# defaults
@@ -104,6 +92,8 @@ class OntologyTagger(Graph):
 	solr = 'localhost:8983/solr/core1/'
 	source_facet = '_text_'
 	target_facet = 'tag_ss'
+
+	labelProperties = (rdflib.term.URIRef(u'http://www.w3.org/2004/02/skos/core#prefLabel'), rdflib.term.URIRef(u'http://www.w3.org/2000/01/rdf-schema#label'), rdflib.term.URIRef(u'http://www.w3.org/2004/02/skos/core#altLabel'), rdflib.term.URIRef(u'http://www.w3.org/2004/02/skos/core#hiddenLabel'))
 	
 	synonyms_embed_to_document = False
 	synonyms_configfile = False
@@ -114,15 +104,65 @@ class OntologyTagger(Graph):
 	
 
 	#
-	# get all labels, alternate labels and synonyms for the URI/subject
+	# get all labels, alternate labels / synonyms for the URI/subject, if not there, use subject (=URI) as default
 	#
 
-	def get_labels(self, s):
+	def get_labels(self, subject):
+
+		labels = []
 	
-		labels = self.preferredLabel(subject=s, labelProperties=(rdflib.term.URIRef(u'http://www.w3.org/2004/02/skos/core#prefLabel'), rdflib.term.URIRef(u'http://www.w3.org/2000/01/rdf-schema#label'), rdflib.term.URIRef(u'http://www.w3.org/2004/02/skos/core#altLabel'), rdflib.term.URIRef(u'http://www.w3.org/2004/02/skos/core#hiddenLabel')))
-	
+		# append RDFS.label
+
+		# get all labels for this obj
+		for label in self.objects(subject=subject, predicate=rdflib.RDFS.label):
+			labels.append(label)
+
+		#
+		# append SKOS labels
+		#
+			
+		# append SKOS prefLabel
+		skos = rdflib.Namespace('http://www.w3.org/2004/02/skos/core#')
+		for label in self.objects(subject=subject, predicate=skos['prefLabel']):
+			labels.append(label)
+
+		# append SKOS altLabels
+		for label in self.objects(subject=subject, predicate=skos['altLabel']):
+			labels.append(label)
+
+		# append SKOS hiddenLabels
+		for label in self.objects(subject=subject, predicate=skos['hiddenLabel']):
+			labels.append(label)
+
 		return labels
 
+
+
+	# best/preferred label as title
+	def get_preferred_label(self, subject, lang='en'):
+		
+			preferred_label = self.preferredLabel(subject=subject, lang=lang, labelProperties=self.labelProperties)
+
+			# if no label in preferred language, try with english, if not preferred lang is english yet)
+			if not preferred_label and not lang == 'en':
+				
+				preferred_label = self.preferredLabel(subject=subject, lang='en', labelProperties=self.labelProperties)
+
+			# use label from some other language
+			if not preferred_label:
+				
+				preferred_label = self.preferredLabel(subject=subject, labelProperties=self.labelProperties)
+
+			# if no label, use URI
+			if preferred_label:
+				# since return is tuple with type and label take only the label
+				preferred_label = preferred_label[0][1]
+			else:
+				preferred_label = subject
+
+			return preferred_label
+
+	
 
 	#
 	# tag the concept with URI/subject s to target_facet of all documents including at least of the labels
@@ -145,25 +185,9 @@ class OntologyTagger(Graph):
 			# add URI of the entity, so we can filter/export URIs/entities, too
 			tagdata[target_facet + '_uri_ss'] = s
 
+			# normalized/best/preferred label to facet for normalized label
+			preferred_label = self.get_preferred_label(subject=s, lang=lang)
 
-			# normalized/best/preferred label  to facet for normalized label
-
-			preferred_label = None
-
-			preferred_label = self.preferredLabel(subject=s, lang=lang, labelProperties=(rdflib.term.URIRef(u'http://www.w3.org/2004/02/skos/core#prefLabel'), rdflib.term.URIRef(u'http://www.w3.org/2000/01/rdf-schema#label'), rdflib.term.URIRef(u'http://www.w3.org/2004/02/skos/core#altLabel')))
-
-			# if no label in preferred language, try with english, if not preferred lang is english yet)
-			if not preferred_label and not lang == 'en':
-				
-				preferred_label = self.preferredLabel(subject=s, lang='en', labelProperties=(rdflib.term.URIRef(u'http://www.w3.org/2004/02/skos/core#prefLabel'), rdflib.term.URIRef(u'http://www.w3.org/2000/01/rdf-schema#label'), rdflib.term.URIRef(u'http://www.w3.org/2004/02/skos/core#altLabel')))
-
-			# if not there in own or english language, use first available label from other language
-			if preferred_label:
-				# since return is tuple with type and label take only the label
-				preferred_label = preferred_label[0][1]
-			else:
-				preferred_label = labels[0][1]
-						
 			tagdata = add_value_to_facet(facet = target_facet + '_preferred_label_ss', value = preferred_label, data=tagdata)
 
 
@@ -201,7 +225,7 @@ class OntologyTagger(Graph):
 				labels_file = open(self.labels_configfile, 'a', encoding="utf-8")
 
 				for label in labels:
-					label = str(label[1])
+					label = str(label)
 					labels_file.write(label + "\n")
 
 				labels_file.close()
@@ -216,7 +240,7 @@ class OntologyTagger(Graph):
 				wordlist_file = open(self.wordlist_configfile, 'a', encoding="UTF-8")
 
 				for label in labels:
-					label = str(label[1])
+					label = str(label)
 					words = label.split()
 					for word in words:
 						word = word.strip("(),")
@@ -244,11 +268,11 @@ class OntologyTagger(Graph):
 
 						for label in labels:
 		
-							tagdata = add_value_to_facet(facet = target_facet + '_synonyms_ss', value = label[1], data=tagdata)
+							tagdata = add_value_to_facet(facet = target_facet + '_synonyms_ss', value = label, data=tagdata)
 						
 					if self.synonyms_configfile:
 							
-							append_rdflabels_to_synonyms_configfile(labels, self.synonyms_configfile)
+							append_labels_to_synonyms_configfile(labels, self.synonyms_configfile)
 
 			# If Solr server for tagging set
 			# which is not, if only export of synonyms without tagging of documents in index
