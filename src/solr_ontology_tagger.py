@@ -2,15 +2,13 @@
 # -*- coding: utf-8 -*-
 
 #
-# Tag / enrich indexed documents with URIs, aliases & synonyms from new or changed SKOS thesaurus or RDF(S) ontology
+# Tag / enrich indexed documents with URIs, aliases & synonyms from SKOS thesaurus or RDF(S) ontology
 #
 
-# Tool to apply new thesauri with some dozens, some hundred or some thousand entries or new entries to existing index
-
-# This way will take too much time for very big thesauri or ontologies with many entries
+# Apply new thesauri with some dozens, some hundred or some thousand entries or new entries to existing index will take too much time for very big thesauri or ontologies with many entries
 # since every subject will need one query and a change of all affected documents
 
-# For very big dictionaries / ontologies with many entries config/use an ETL or data enrichment plugin for ontology annotation / tagging before / while indexing
+# For very big dictionaries / ontologies with many entries and tagging of new documents config/use the Open Semantic ETL data enrichment plugin enhance_ner_dictionary for ontology annotation / tagging before / while indexing
 
 
 import logging
@@ -99,6 +97,7 @@ class OntologyTagger(Graph):
 	synonyms_configfile = False
 	wordlist_configfile = False
 	labels_configfile = False
+	entities_configfile = False
 
 	appended_words = []
 	
@@ -229,6 +228,28 @@ class OntologyTagger(Graph):
 					labels_file.write(label + "\n")
 
 				labels_file.close()
+
+			#
+			# Append labes to entities config for ETL with prefered label (for normalizing) and all other labels for dictionary based named entity extraction
+			#
+
+			if self.entities_configfile:
+			
+				#
+				# append entities with id and labels to entities dictionary file
+				#
+				entities_file = open(self.entities_configfile, 'a', encoding="UTF-8")
+				
+				uri = str(s)
+			
+				entities_file.write(target_facet + "\t" + uri + "\t" + preferred_label)
+				for label in labels:
+					entities_file.write("\t" + label)
+			
+				entities_file.write("\n")
+			
+				entities_file.close()
+
 
 			
 			#
