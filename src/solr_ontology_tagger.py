@@ -100,7 +100,6 @@ class OntologyTagger(Graph):
 	synonyms_configfile = False
 	wordlist_configfile = False
 	labels_configfile = False
-	entities_configfile = False
 
 	appended_words = []
 	
@@ -231,28 +230,6 @@ class OntologyTagger(Graph):
 					labels_file.write(label + "\n")
 
 				labels_file.close()
-
-			#
-			# Append labes to entities config for ETL with prefered label (for normalizing) and all other labels for dictionary based named entity extraction
-			#
-
-			if self.entities_configfile:
-			
-				#
-				# append entities with id and labels to entities dictionary file
-				#
-				entities_file = open(self.entities_configfile, 'a', encoding="UTF-8")
-				
-				uri = str(s)
-			
-				entities_file.write(target_facet + "\t" + uri + "\t" + preferred_label)
-				for label in labels:
-					entities_file.write("\t" + label)
-			
-				entities_file.write("\n")
-			
-				entities_file.close()
-
 
 			
 			#
