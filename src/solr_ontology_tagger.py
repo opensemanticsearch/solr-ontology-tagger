@@ -87,7 +87,10 @@ class OntologyTagger(Graph):
 	# defaults
 	verbose = False
 	
-	solr = 'localhost:8983/solr/core1/'
+	solr = 'localhost:8983/solr/'
+	solr_core = 'core1'
+	solr_entities = None
+	solr_core_entities = None
 	source_facet = '_text_'
 	target_facet = 'tag_ss'
 
@@ -295,9 +298,16 @@ class OntologyTagger(Graph):
 							
 							append_labels_to_synonyms_configfile(labels, self.synonyms_configfile)
 
+			if self.solr or self.solr_entities:
+				connector = opensemanticetl.export_solr.export_solr()
+				connector.verbose = self.verbose
+
 			# If Solr server for tagging set
 			# which is not, if only export of synonyms without tagging of documents in index
 			if self.solr:
+
+				connector.solr = self.solr
+				connector.core = self.solr_core
 				
 				# build lucene query to search for at least one label of all labels
 				query = labels_to_query(labels)
@@ -306,9 +316,49 @@ class OntologyTagger(Graph):
 				query = source_facet + ':(' + query + ')'
 	
 				# tag (add facets and values) documents matching this query with this URIs & labels
+				count =  connector.update_by_query(query=query, data=tagdata)
+
+			# If Solr server / core for entities index for normalization or disambiguation
+			if self.solr_entities:
+
+				data = {
+					'id': s,
+					'preferred_label_s': preferred_label
+				}
+				
+				# append RDFS.label
+
+				data['label_ss'] = []
+				# get all labels for this obj
+				for label in self.objects(subject=s, predicate=rdflib.RDFS.label):
+					data['label_ss'].append(label)
+		
+				#
+				# append SKOS labels
+				#
+					
+				# append SKOS prefLabel
+				data['skos_prefLabel_ss'] = []
+
+				for label in self.objects(subject=s, predicate=skos['prefLabel']):
+					data['skos_prefLabel_ss'].append(label)
+		
+				# append SKOS altLabels
+				data['skos_altLabel_ss'] = []
+
+				for label in self.objects(subject=s, predicate=skos['altLabel']):
+					data['skos_altLabel_ss'].append(label)
+		
+				# append SKOS hiddenLabels
+				data['skos_hiddenLabel_ss'] = []
+				for label in self.objects(subject=s, predicate=skos['hiddenLabel']):
+					data['skos_hiddenLabel_ss'].append(label)
+				
 				connector = opensemanticetl.export_solr.export_solr()
 				connector.verbose = self.verbose
-				count =  connector.update_by_query(query=query, data=tagdata)
+				connector.solr = self.solr_entities
+				connector.core = self.solr_core_entities
+				connector.post(data=data)
 
 
 	#
@@ -350,7 +400,8 @@ if __name__ == "__main__":
 	from optparse import OptionParser
 
 	parser = OptionParser("solr-ontology-tagger ontology-filename")
-	parser.add_option("-u", "--solr-uri", dest="solr", default=None, help="URI of Solr server and index, where to tag documents")
+	parser.add_option("-u", "--solr-uri", dest="solr", default=None, help="URI of Solr server, where to tag documents")
+	parser.add_option("-c", "--solr-core", dest="solr_core", default=None, help="Solr core name, where to tag documents")
 	parser.add_option("-s", "--synonyms_configfile", dest="synonyms_configfile", default=None, help="Solr synonyms config file to append synonyms")
 	parser.add_option("-w", "--wordlist_configfile", dest="wordlist_configfile", default=None, help="OCR wordlist/dictionary config file to append words")
 	parser.add_option("-a", "--sourcefacet", dest="source_facet", default="_text_", help="Facet / field to analyze")
@@ -373,6 +424,9 @@ if __name__ == "__main__":
 
 	if options.solr:
 		ontology_tagger.solr = options.solr
+
+	if options.solr_core:
+		ontology_tagger.solr = options.solr_core
 
 	if options.synonyms_configfile:
 		ontology_tagger.synonyms_configfile = options.synonyms_configfile
