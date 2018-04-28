@@ -100,20 +100,20 @@ class OntologyTagger(Graph):
 	
 	synonyms_embed_to_document = False
 	synonyms_configfile = False
-	synonyms_ressourceid = False
+	synonyms_resourceid = False
 	wordlist_configfile = False
 	labels_configfile = False
 
 	appended_words = []
-	
-	
-	#
-	# append labels to Solr REST managed ressource
-	#
-	def append_labels_to_synonyms_ressource(self, labels):
 
-		url = self.solr + self.solr_core + '/schema/analysis/synonyms/' + self.synonyms_ressourceid
-		headers = {'content-type' : 'application/json'}
+	connector = opensemanticetl.export_solr.export_solr()
+	connector.verbose = verbose
+	
+	
+	#
+	# append synonyms to Solr REST managed resource
+	#
+	def append_labels_to_synonyms_resource(self, labels):
 				
 		label = str(labels[0])
 
@@ -121,10 +121,8 @@ class OntologyTagger(Graph):
 		for synonym in labels[1:]:
 			synonyms.append(str(synonym))
 
-		data = { label: synonyms }
+		self.connector.append_synonyms(resourceid=self.synonyms_resourceid, label=label, synonyms=synonyms)
 		
-		r = requests.post(url=url, data=json.dumps(data), headers=headers)
-
 
 	#
 	# get all labels, alternate labels / synonyms for the URI/subject, if not there, use subject (=URI) as default
@@ -283,7 +281,7 @@ class OntologyTagger(Graph):
 			# - and / or to synonym config (mapping)
 			#
 
-			if self.synonyms_ressourceid or self.synonyms_configfile or self.synonyms_embed_to_document:
+			if self.synonyms_resourceid or self.synonyms_configfile or self.synonyms_embed_to_document:
 
 				if len(labels) > 1:
 
@@ -297,19 +295,16 @@ class OntologyTagger(Graph):
 							
 							append_labels_to_synonyms_configfile(labels, self.synonyms_configfile)
 
-					if self.synonyms_ressourceid:
-							self.append_labels_to_synonyms_ressource(labels)
+					if self.synonyms_resourceid:
+							self.append_labels_to_synonyms_resource(labels)
 
 			if self.solr or self.solr_entities:
-				connector = opensemanticetl.export_solr.export_solr()
-				connector.verbose = self.verbose
+				self.connector.solr = self.solr
+				self.connector.solr_core = self.solr_core
 
 			# If Solr server for tagging set
 			# which is not, if only export of synonyms without tagging of documents in index
 			if self.tag:
-
-				connector.solr = self.solr
-				connector.core = self.solr_core
 				
 				# build lucene query to search for at least one label of all labels
 				query = labels_to_query(labels)
@@ -318,7 +313,7 @@ class OntologyTagger(Graph):
 				query = source_facet + ':(' + query + ')'
 	
 				# tag (add facets and values) documents matching this query with this URIs & labels
-				count =  connector.update_by_query(query=query, data=tagdata)
+				count =  self.connector.update_by_query(query=query, data=tagdata)
 
 			# If Solr server / core for entities index for normalization or disambiguation
 			if self.solr_entities:
@@ -356,11 +351,9 @@ class OntologyTagger(Graph):
 				for label in self.objects(subject=s, predicate=skos['hiddenLabel']):
 					data['skos_hiddenLabel_ss'].append(label)
 				
-				connector = opensemanticetl.export_solr.export_solr()
-				connector.verbose = self.verbose
-				connector.solr = self.solr_entities
-				connector.core = self.solr_core_entities
-				connector.post(data=data)
+				self.connector.solr = self.solr_entities
+				self.connector.core = self.solr_core_entities
+				self.connector.post(data=data)
 
 
 	#
@@ -405,7 +398,7 @@ if __name__ == "__main__":
 	parser.add_option("-u", "--solr-uri", dest="solr", default=None, help="URI of Solr server")
 	parser.add_option("-c", "--solr-core", dest="solr_core", default=None, help="Solr core name")
 	parser.add_option("-s", "--synonyms_configfile", dest="synonyms_configfile", default=None, help="Solr synonyms config file to append synonyms")
-	parser.add_option("-r", "--synonyms_ressource", dest="synonyms_ressource", default=None, help="Solr REST managed synonyms ressource to append synonyms")
+	parser.add_option("-r", "--synonyms_resource", dest="synonyms_resource", default=None, help="Solr REST managed synonyms resource to append synonyms")
 	parser.add_option("-w", "--wordlist_configfile", dest="wordlist_configfile", default=None, help="OCR wordlist/dictionary config file to append words")
 	parser.add_option("-a", "--sourcefacet", dest="source_facet", default="_text_", help="Facet / field to analyze")
 	parser.add_option("-f", "--facet", dest="facet", default="tag_ss", help="Facet / field to tag to")
@@ -435,8 +428,8 @@ if __name__ == "__main__":
 	if options.synonyms_configfile:
 		ontology_tagger.synonyms_configfile = options.synonyms_configfile
 
-	if options.synonyms_ressource:
-		ontology_tagger.synonyms_ressourceid = options.synonyms_ressource
+	if options.synonyms_resource:
+		ontology_tagger.synonyms_resourceid = options.synonyms_resource
 
 	if options.wordlist_configfile:
 		ontology_tagger.wordlist_configfile = options.wordlist_configfile
