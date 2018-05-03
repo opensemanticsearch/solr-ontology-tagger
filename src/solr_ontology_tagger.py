@@ -320,7 +320,8 @@ class OntologyTagger(Graph):
 
 				data = {
 					'id': s,
-					'preferred_label_s': preferred_label
+					'preferred_label_s': preferred_label,
+					'type_ss': [target_facet],
 				}
 				
 				# append RDFS.label
