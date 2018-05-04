@@ -321,6 +321,7 @@ class OntologyTagger(Graph):
 				data = {
 					'id': s,
 					'preferred_label_s': preferred_label,
+					'preferred_label_txt': preferred_label,
 					'type_ss': [target_facet],
 				}
 				
@@ -330,6 +331,7 @@ class OntologyTagger(Graph):
 				# get all labels for this obj
 				for label in self.objects(subject=s, predicate=rdflib.RDFS.label):
 					data['label_ss'].append(label)
+				data['label_txt'] = data['label_ss']
 		
 				#
 				# append SKOS labels
@@ -340,17 +342,20 @@ class OntologyTagger(Graph):
 
 				for label in self.objects(subject=s, predicate=skos['prefLabel']):
 					data['skos_prefLabel_ss'].append(label)
+				data['skos_prefLabel_txt'] = data['skos_prefLabel_ss']
 		
 				# append SKOS altLabels
 				data['skos_altLabel_ss'] = []
 
 				for label in self.objects(subject=s, predicate=skos['altLabel']):
 					data['skos_altLabel_ss'].append(label)
+				data['skos_altLabel_txt'] = data['skos_altLabel_ss']
 		
 				# append SKOS hiddenLabels
 				data['skos_hiddenLabel_ss'] = []
 				for label in self.objects(subject=s, predicate=skos['hiddenLabel']):
 					data['skos_hiddenLabel_ss'].append(label)
+				data['skos_hiddenLabel_txt'] = data['skos_hiddenLabel_ss']
 				
 				self.connector.solr = self.solr_entities
 				self.connector.core = self.solr_core_entities
