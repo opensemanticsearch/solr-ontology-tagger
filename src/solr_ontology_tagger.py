@@ -87,7 +87,7 @@ class OntologyTagger(Graph):
 	# defaults
 	verbose = False
 	
-	solr = 'localhost:8983/solr/'
+	solr = 'http://localhost:8983/solr/'
 	solr_core = 'opensemanticsearch'
 	solr_entities = None
 	solr_core_entities = None
@@ -114,15 +114,12 @@ class OntologyTagger(Graph):
 	# append synonyms to Solr REST managed resource
 	#
 	def append_labels_to_synonyms_resource(self, labels):
-				
-		label = str(labels[0])
 
-		synonyms=[]
-		for synonym in labels[1:]:
-			synonyms.append(str(synonym))
-
-		self.connector.append_synonyms(resourceid=self.synonyms_resourceid, label=label, synonyms=synonyms)
-		
+		for label in labels:
+			synonyms=[]
+			for synonym in labels:
+				synonyms.append(str(synonym))
+				self.connector.append_synonyms(resourceid=self.synonyms_resourceid, label=label, synonyms=synonyms)
 
 	#
 	# get all labels, alternate labels / synonyms for the URI/subject, if not there, use subject (=URI) as default
@@ -274,6 +271,10 @@ class OntologyTagger(Graph):
 				wordlist_file.close()
 
 
+			if self.solr or self.solr_entities:
+				self.connector.solr = self.solr
+				self.connector.core = self.solr_core
+
 			#
 			# Add alternate labels and synonyms
 			#
@@ -292,15 +293,10 @@ class OntologyTagger(Graph):
 							tagdata = add_value_to_facet(facet = target_facet + '_synonyms_ss', value = label, data=tagdata)
 						
 					if self.synonyms_configfile:
-							
 							append_labels_to_synonyms_configfile(labels, self.synonyms_configfile)
 
 					if self.synonyms_resourceid:
 							self.append_labels_to_synonyms_resource(labels)
-
-			if self.solr or self.solr_entities:
-				self.connector.solr = self.solr
-				self.connector.solr_core = self.solr_core
 
 			# If Solr server for tagging set
 			# which is not, if only export of synonyms without tagging of documents in index
