@@ -101,6 +101,7 @@ class OntologyTagger(Graph):
 	synonyms_embed_to_document = False
 	synonyms_configfile = False
 	synonyms_resourceid = False
+	synonyms_dictionary = {}
 	wordlist_configfile = False
 	labels_configfile = False
 
@@ -111,7 +112,21 @@ class OntologyTagger(Graph):
 	
 	
 	#
-	# append synonyms to Solr REST managed resource
+	# append synonyms by Solr REST API for managed resources
+	#
+	def synonyms2solr(self):
+		
+		url = self.solr + self.solr_core + '/schema/analysis/synonyms/' + self.synonyms_resourceid
+		headers = {'content-type' : 'application/json'}
+		
+		r = requests.post(url=url, data=json.dumps(self.synonyms_dictionary), headers=headers)
+		print (url)
+		print (r.text)
+
+	
+	
+	#
+	# append synonyms to dictionary for Solr REST managed resource
 	#
 	def append_labels_to_synonyms_resource(self, labels):
 
@@ -119,7 +134,17 @@ class OntologyTagger(Graph):
 			synonyms=[]
 			for synonym in labels:
 				synonyms.append(str(synonym))
-				self.connector.append_synonyms(resourceid=self.synonyms_resourceid, label=label, synonyms=synonyms)
+				
+			# create dictionary entry for concept
+			if not label in self.synonyms_dictionary:
+				# add concept itself as synonym, so original concept will be found, too, not only rewritten to synonym(s)
+				self.synonyms_dictionary[label] = [label]
+	
+			# add synonyms to synonym array for concepts entry in dictionary
+			for synonym in synonyms:
+				if synonym not in self.synonyms_dictionary[label]:
+					self.synonyms_dictionary[label].append(synonym)
+
 
 	#
 	# get all labels, alternate labels / synonyms for the URI/subject, if not there, use subject (=URI) as default
@@ -366,6 +391,8 @@ class OntologyTagger(Graph):
 	
 	def apply(self, target_facet="tag_ss", source_facet="_text_", lang='en', narrower=True):
 	
+		self.synonyms_dictionary = {}
+	
 		# since this is returing subjects more than one time ...
 		#for s in g.subjects(predicate=None, object=None):
 	
@@ -383,8 +410,11 @@ class OntologyTagger(Graph):
 	
 			# tag the documents containing a label of this concept with this subject/concept and its aliases
 			self.tag_documents_with_concept(s, target_facet=target_facet, source_facet=source_facet, lang=lang, narrower=narrower)
-	
-	
+		
+		# for performance issues write the (collected) synonyms dictionary to Solr once
+		if self.synonyms_resourceid:
+			self.synonyms2solr()
+
 #
 # Read command line arguments and start tagging
 #
