@@ -91,7 +91,7 @@ class OntologyTagger(Graph):
 	solr_core = 'opensemanticsearch'
 	solr_entities = None
 	solr_core_entities = None
-	source_facet = '_text_'
+	queryfields = '_text_'
 	target_facet = 'tag_ss'
 	
 	tag = False
@@ -211,7 +211,7 @@ class OntologyTagger(Graph):
 	# tag the concept with URI/subject s to target_facet of all documents including at least of the labels
 	#
 
-	def tag_documents_with_concept(self, s, target_facet='tag_ss', source_facet="_text_", lang='en', narrower=True):
+	def tag_documents_with_concept(self, s, target_facet='tag_ss', queryfields="_text_", lang='en', narrower=True):
 			
 		# get all Labels for this subject
 		labels = self.get_labels(s)
@@ -226,10 +226,12 @@ class OntologyTagger(Graph):
 			tagdata = {}
 			
 			# add URI of the entity, so we can filter/export URIs/entities, too
-			tagdata[target_facet + '_uri_ss'] = s
+			tagdata[target_facet + '_uri_ss'] = str(s)
 
 			# normalized/best/preferred label to facet for normalized label
-			preferred_label = self.get_preferred_label(subject=s, lang=lang)
+			preferred_label = str(self.get_preferred_label(subject=s, lang=lang))
+
+			tagdata = add_value_to_facet(facet = target_facet, value = preferred_label, data=tagdata)
 
 			tagdata = add_value_to_facet(facet = target_facet + '_preferred_label_ss', value = preferred_label, data=tagdata)
 
@@ -329,12 +331,10 @@ class OntologyTagger(Graph):
 				
 				# build lucene query to search for at least one label of all labels
 				query = labels_to_query(labels)
-	
-				# search only in source facet
-				query = source_facet + ':(' + query + ')'
-	
+		
 				# tag (add facets and values) documents matching this query with this URIs & labels
-				count =  self.connector.update_by_query(query=query, data=tagdata)
+				print ("{}{}".format(query, tagdata))
+				count =  self.connector.update_by_query( query=query, data=tagdata, queryparameters={'qf': queryfields} )
 
 			# If Solr server / core for entities index for normalization or disambiguation
 			if self.solr_entities:
@@ -389,7 +389,7 @@ class OntologyTagger(Graph):
 	# - tag the matching documents in index
 	#
 	
-	def apply(self, target_facet="tag_ss", source_facet="_text_", lang='en', narrower=True):
+	def apply(self, target_facet="tag_ss", queryfields="_text_", lang='en', narrower=True):
 	
 		self.synonyms_dictionary = {}
 	
@@ -409,7 +409,7 @@ class OntologyTagger(Graph):
 			s = row[0]	
 	
 			# tag the documents containing a label of this concept with this subject/concept and its aliases
-			self.tag_documents_with_concept(s, target_facet=target_facet, source_facet=source_facet, lang=lang, narrower=narrower)
+			self.tag_documents_with_concept(s, target_facet=target_facet, queryfields=queryfields, lang=lang, narrower=narrower)
 		
 		# for performance issues write the (collected) synonyms dictionary to Solr once
 		if self.synonyms_resourceid:
@@ -432,7 +432,7 @@ if __name__ == "__main__":
 	parser.add_option("-s", "--synonyms_configfile", dest="synonyms_configfile", default=None, help="Solr synonyms config file to append synonyms")
 	parser.add_option("-r", "--synonyms_resource", dest="synonyms_resource", default=None, help="Solr REST managed synonyms resource to append synonyms")
 	parser.add_option("-w", "--wordlist_configfile", dest="wordlist_configfile", default=None, help="OCR wordlist/dictionary config file to append words")
-	parser.add_option("-a", "--sourcefacet", dest="source_facet", default="_text_", help="Facet / field to analyze")
+	parser.add_option("-a", "--queryfields", dest="queryfields", default="_text_", help="Facet(s) / field(s) to analyze")
 	parser.add_option("-f", "--facet", dest="facet", default="tag_ss", help="Facet / field to tag to")
 	parser.add_option("-l", "--lang", dest="lang", default="en", help="Language for normalized / preferred label")
 	parser.add_option("-n", "--narrower", dest="narrower", action="store_true", default=True, help="Tag with narrower concepts, too")
@@ -477,4 +477,4 @@ if __name__ == "__main__":
 	ontology_tagger.parse(ontology)
 
 	# tag the documents on Solr server with all entities in the ontology	
-	ontology_tagger.apply(target_facet=options.facet, source_facet=options.source_facet, lang=options.lang, narrower=options.narrower)
+	ontology_tagger.apply(target_facet=options.facet, queryfields=options.queryfields, lang=options.lang, narrower=options.narrower)
