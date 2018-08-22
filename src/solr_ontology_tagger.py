@@ -97,6 +97,9 @@ class OntologyTagger(Graph):
 	tag = False
 
 	labelProperties = (rdflib.term.URIRef(u'http://www.w3.org/2004/02/skos/core#prefLabel'), rdflib.term.URIRef(u'http://www.w3.org/2000/01/rdf-schema#label'), rdflib.term.URIRef(u'http://www.w3.org/2004/02/skos/core#altLabel'), rdflib.term.URIRef(u'http://www.w3.org/2004/02/skos/core#hiddenLabel'))
+
+	# only if language of label in language filter (default filter: empty/all languages)
+	languages=[]
 	
 	synonyms_embed_to_document = False
 	synonyms_configfile = False
@@ -154,11 +157,14 @@ class OntologyTagger(Graph):
 
 		labels = []
 	
-		# append RDFS.label
-
-		# get all labels for this obj
+		# append RDFS.labels
 		for label in self.objects(subject=subject, predicate=rdflib.RDFS.label):
-			labels.append(label)
+
+			if self.languages:
+				if label.language in self.languages:
+					labels.append(label)
+			else:
+				labels.append(label)
 
 		#
 		# append SKOS labels
@@ -167,15 +173,28 @@ class OntologyTagger(Graph):
 		# append SKOS prefLabel
 		skos = rdflib.Namespace('http://www.w3.org/2004/02/skos/core#')
 		for label in self.objects(subject=subject, predicate=skos['prefLabel']):
-			labels.append(label)
+
+			if self.languages:
+				if label.language in self.languages:
+					labels.append(label)
+			else:
+				labels.append(label)
 
 		# append SKOS altLabels
 		for label in self.objects(subject=subject, predicate=skos['altLabel']):
-			labels.append(label)
+			if self.languages:
+				if label.language in self.languages:
+					labels.append(label)
+			else:
+				labels.append(label)
 
 		# append SKOS hiddenLabels
 		for label in self.objects(subject=subject, predicate=skos['hiddenLabel']):
-			labels.append(label)
+			if self.languages:
+				if label.language in self.languages:
+					labels.append(label)
+			else:
+				labels.append(label)
 
 		return labels
 
@@ -333,7 +352,6 @@ class OntologyTagger(Graph):
 				query = labels_to_query(labels)
 		
 				# tag (add facets and values) documents matching this query with this URIs & labels
-				print ("{}{}".format(query, tagdata))
 				count =  self.connector.update_by_query( query=query, data=tagdata, queryparameters={'qf': queryfields} )
 
 			# If Solr server / core for entities index for normalization or disambiguation
@@ -435,6 +453,7 @@ if __name__ == "__main__":
 	parser.add_option("-a", "--queryfields", dest="queryfields", default="_text_", help="Facet(s) / field(s) to analyze")
 	parser.add_option("-f", "--facet", dest="facet", default="tag_ss", help="Facet / field to tag to")
 	parser.add_option("-l", "--lang", dest="lang", default="en", help="Language for normalized / preferred label")
+	parser.add_option("-i", "--languages", dest="languages", default=None, help="Language(s) filter")
 	parser.add_option("-n", "--narrower", dest="narrower", action="store_true", default=True, help="Tag with narrower concepts, too")
 	parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=None, help="Print debug messages")
 	parser.add_option("-t", "--tag-documents", dest="tag", action="store_true", default=False, help="Tag documents")
@@ -472,6 +491,8 @@ if __name__ == "__main__":
 	if options.verbose == False or options.verbose==True:
 		ontology_tagger.verbose=options.verbose
 
+	if options.languages:
+		ontology_tagger.languages = options.languages.split(',')
 
 	#load graph from RDF file
 	ontology_tagger.parse(ontology)
