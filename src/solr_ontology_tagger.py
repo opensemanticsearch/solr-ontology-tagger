@@ -94,6 +94,8 @@ class OntologyTagger(Graph):
 	queryfields = '_text_'
 	target_facet = 'tag_ss'
 	
+	additional_all_labels_fields = []
+	
 	tag = False
 
 	labelProperties = (rdflib.term.URIRef(u'http://www.w3.org/2004/02/skos/core#prefLabel'), rdflib.term.URIRef(u'http://www.w3.org/2000/01/rdf-schema#label'), rdflib.term.URIRef(u'http://www.w3.org/2004/02/skos/core#altLabel'), rdflib.term.URIRef(u'http://www.w3.org/2004/02/skos/core#hiddenLabel'))
@@ -400,6 +402,10 @@ class OntologyTagger(Graph):
 					data['skos_hiddenLabel_ss'].append(label)
 					data['all_labels_ss'].append(label)
 				data['skos_hiddenLabel_txt'] = data['skos_hiddenLabel_ss']
+				
+				# additional all labels fields for additional/multiple/language sensetive taggers/analyzers/stemmers
+				for additional_all_labels_field in self.additional_all_labels_fields:
+					data[additional_all_labels_field] = data['all_labels_ss']
 				
 				self.connector.solr = self.solr_entities
 				self.connector.core = self.solr_core_entities
