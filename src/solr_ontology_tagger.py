@@ -364,6 +364,7 @@ class OntologyTagger(Graph):
 					'preferred_label_s': preferred_label,
 					'preferred_label_txt': preferred_label,
 					'all_labels_ss': [preferred_label],
+					'skos_broader_taxonomy_prefLabel_ss': [preferred_label],
 					'type_ss': [target_facet],
 				}
 				
