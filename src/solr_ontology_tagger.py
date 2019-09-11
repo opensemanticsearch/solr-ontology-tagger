@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 #
-# Tag / enrich indexed documents with URIs, aliases & synonyms from SKOS thesaurus or RDF(S) ontology
+# Import entities from SKOS thesaurus or RDF(S) ontology to Entities index for Solr text tagger and/or Tag / enrich indexed documents with URIs, aliases & synonyms
 #
 
 # Apply new thesauri with some dozens, some hundred or some thousand entries or new entries to existing index will take too much time for very big thesauri or ontologies with many entries
@@ -226,13 +226,65 @@ class OntologyTagger(Graph):
 
 			return preferred_label
 
+		
+	#
+	# get (upper) taxonomy with all upper/broader concepts for a subject
+	#
 	
+	def get_taxonomy(self, subject, path_ids=None, path_labels=None, results=None):
+		if results is None:
+			results = []
+
+		if not path_labels:
+			path_labels = [ self.get_preferred_label(subject) ]
+	
+		if not path_ids:
+			path_ids = []
+	
+		# IDs/URIs of broader concepts
+		broaders = []
+
+		# get ID(s)/(URIs) of broader concept(s) of subject
+		for broader in self.objects(subject, skos['broader']):
+			broaders.append(broader)
+	
+		# reverse: same, if current subject is narrower of other subject(s)
+		# (get ID(s)/(URIs) of concept(s) which link the current subject as narrower object)
+		for broader in self.subjects(predicate=skos['narrower'], object=subject):
+			if broader not in broaders:
+				broaders.append(broader)
+	
+		# add id to yet or now traversed ids stack
+		extended_path_ids = path_ids.copy()
+		extended_path_ids.append(subject)
+	
+		traversal_done = True
+		
+		# recursion, if broader concepts
+		for broader in broaders:
+	
+			# pk not in yet traversed path_ids (stack for loop detection stoping traversal, if a broader concept has a relation of type broader to one of its narrower yet traversed children)
+			if not broader in extended_path_ids:
+				
+				traversal_done = False
+						
+				extended_path_labels=path_labels.copy()
+				extended_path_labels.append(self.get_preferred_label(broader))
+				results = self.get_taxonomy(subject=broader, path_ids=extended_path_ids, path_labels=extended_path_labels, results=results)
+	
+		if traversal_done:
+			# reverse the traversal path to start with broadest, not outgoing concept
+			path_labels.reverse()
+			results.append("\t".join(path_labels))
+					
+		return results
+
 
 	#
-	# tag the concept with URI/subject s to target_facet of all documents including at least of the labels
+	# add concept with URI/subject s to entities index and to target_facet of documents including at least one of the labels
 	#
 
-	def tag_documents_with_concept(self, s, target_facet='tag_ss', queryfields="_text_", lang='en', narrower=True):
+	def import_entity(self, s, target_facet='tag_ss', queryfields="_text_", lang='en', narrower=True):
 			
 		# get all Labels for this subject
 		labels = self.get_labels(s)
@@ -323,6 +375,8 @@ class OntologyTagger(Graph):
 				self.connector.solr = self.solr
 				self.connector.core = self.solr_core
 
+				taxonomy = self.get_taxonomy(subject=s)
+
 			#
 			# Add alternate labels and synonyms
 			#
@@ -407,6 +461,10 @@ class OntologyTagger(Graph):
 				# additional all labels fields for additional/multiple/language sensetive taggers/analyzers/stemmers
 				for additional_all_labels_field in self.additional_all_labels_fields:
 					data[additional_all_labels_field] = data['all_labels_ss']
+
+				if taxonomy:
+					data['skos_broader_taxonomy_prefLabel_ss'] = taxonomy
+
 				
 				self.connector.solr = self.solr_entities
 				self.connector.core = self.solr_core_entities
@@ -416,6 +474,7 @@ class OntologyTagger(Graph):
 	#
 	# For all found entities (IDs / synonyms / aliases) of the ontology:
 	# - write synonyms config
+	# - write to entities index for named entity extraction
 	# - tag the matching documents in index
 	#
 	
@@ -438,10 +497,10 @@ class OntologyTagger(Graph):
 			# get subject of the concept from first column
 			s = row[0]	
 	
-			# tag the documents containing a label of this concept with this subject/concept and its aliases
-			self.tag_documents_with_concept(s, target_facet=target_facet, queryfields=queryfields, lang=lang, narrower=narrower)
+			# add concept to configs / entities index and/or tag documents
+			self.import_entity(s, target_facet=target_facet, queryfields=queryfields, lang=lang, narrower=narrower)
 		
-		# for performance issues write the (collected) synonyms dictionary to Solr once
+		# for performance issues write the (before collected) synonyms dictionary to Solr at once
 		if self.synonyms_resourceid:
 			self.synonyms2solr()
 
