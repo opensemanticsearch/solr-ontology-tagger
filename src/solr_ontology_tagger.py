@@ -59,6 +59,40 @@ def add_value_to_facet(facet, value, data = None ):
 
 
 #
+# split a taxonomy entry to separated index fields
+#
+def taxonomy2fields(taxonomy, field, separator="\t", subfields_suffix="_ss"):
+
+	result = {}
+
+	# if not multivalued field, convert to used list/array strucutre
+	if not isinstance(taxonomy, list):
+		taxonomy = [taxonomy]
+
+	for taxonomy_entry in taxonomy:
+
+		i = 0
+		path = ''
+		for taxonomy_entry_part in taxonomy_entry.split(separator):
+
+			taxonomy_fieldname = field + '_taxonomy_' + str(i) + subfields_suffix
+
+			if not taxonomy_fieldname in result:
+				result[taxonomy_fieldname] = []
+
+			if len(path) > 0:
+				path += separator
+
+			path += taxonomy_entry_part
+
+			result[taxonomy_fieldname].append(path)
+
+			i += 1
+
+	return result
+
+
+#
 # build Lucene query from labels
 #
 
@@ -79,6 +113,7 @@ def labels_to_query(labels):
 		query += "\"" + opensemanticetl.export_solr.solr_mask(label) + "\""
 
 	return query
+
 
 
 
@@ -377,6 +412,7 @@ class OntologyTagger(Graph):
 
 				taxonomy = self.get_taxonomy(subject=s)
 
+
 			#
 			# Add alternate labels and synonyms
 			#
@@ -406,6 +442,11 @@ class OntologyTagger(Graph):
 				
 				# build lucene query to search for at least one label of all labels
 				query = labels_to_query(labels)
+
+				separated_taxonomy_fields = taxonomy2fields(taxonomy=taxonomy, field=target_facet)
+				for separated_taxonomy_field in separated_taxonomy_fields:
+					add_value_to_facet(facet=separated_taxonomy_field, value=separated_taxonomy_fields[separated_taxonomy_field], data=tagdata)
+
 		
 				# tag (add facets and values) documents matching this query with this URIs & labels
 				count =  self.connector.update_by_query( query=query, data=tagdata, queryparameters={'qf': queryfields} )
