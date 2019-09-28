@@ -24,6 +24,9 @@ import opensemanticetl.export_solr
 skos = Namespace('http://www.w3.org/2004/02/skos/core#')
 owl = Namespace('http://www.w3.org/2002/07/owl#')
 
+rdf = Namespace('http://www.w3.org/1999/02/22-rdf-syntax-ns#')
+rdfs = Namespace('http://www.w3.org/2000/01/rdf-schema#')
+
 logging.basicConfig()
 
 
@@ -267,6 +270,14 @@ class OntologyTagger(Graph):
 	#
 	
 	def get_taxonomy(self, subject, path_ids=None, path_labels=None, results=None):
+
+		# strip from beginning of the taxonomy, since we want begin taxonomy with content (concepts, classes and instances) not basic classes of the RDF(s)/SKOS standard
+		strip_paths = [
+			rdfs['Description'],
+			rdfs['Class'],
+			skos['Concept'],
+		]
+
 		if results is None:
 			results = []
 
@@ -282,6 +293,14 @@ class OntologyTagger(Graph):
 		# get ID(s)/(URIs) of broader concept(s) of subject
 		for broader in self.objects(subject, skos['broader']):
 			broaders.append(broader)
+
+		for broader in self.objects(subject, rdf['type']):
+			if broader not in broaders and broader not in strip_paths:
+				broaders.append(broader)
+
+		for broader in self.objects(subject, rdfs['subClassOf']):
+			if broader not in broaders and broader not in strip_paths:
+				broaders.append(broader)
 	
 		# reverse: same, if current subject is narrower of other subject(s)
 		# (get ID(s)/(URIs) of concept(s) which link the current subject as narrower object)
