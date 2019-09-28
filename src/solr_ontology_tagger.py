@@ -8,7 +8,7 @@
 # Apply new thesauri with some dozens, some hundred or some thousand entries or new entries to existing index will take too much time for very big thesauri or ontologies with many entries
 # since every subject will need one query and a change of all affected documents
 
-# For very big dictionaries / ontologies with many entries and tagging of new documents config/use the Open Semantic ETL data enrichment plugin enhance_ner_dictionary for ontology annotation / tagging before / while indexing
+# For very big dictionaries / ontologies with many entries and tagging of new documents config/use the Open Semantic ETL data enrichment plugin enhance_entity_linking for Open Semantic Entity Search API for ontology annotation / tagging before / while indexing
 
 
 import logging
