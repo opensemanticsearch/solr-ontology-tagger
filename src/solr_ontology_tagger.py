@@ -11,6 +11,7 @@
 # For very big dictionaries / ontologies with many entries and tagging of new documents config/use the Open Semantic ETL data enrichment plugin enhance_entity_linking for Open Semantic Entity Search API for ontology annotation / tagging before / while indexing
 
 
+import os
 import logging
 import requests
 import json
@@ -125,7 +126,7 @@ class OntologyTagger(Graph):
 	# defaults
 	verbose = False
 	
-	solr = 'http://localhost:8983/solr/'
+	solr = os.getenv('OPEN_SEMANTIC_ETL_SOLR', 'http://localhost:8983/solr/')
 	solr_core = 'opensemanticsearch'
 	solr_entities = None
 	solr_core_entities = None
