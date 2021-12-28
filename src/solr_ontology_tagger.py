@@ -36,7 +36,7 @@ def append_labels_to_synonyms_configfile(labels, synonyms_configfile):
 			
 	synonyms_configfile = open(synonyms_configfile, 'a', encoding="utf-8")
 
- 	# append all labels comma separated and with endline
+	# append all labels comma separated and with endline
 	synonyms_configfile.write(','.join(labels) + '\n')
 
 	synonyms_configfile.close()
@@ -69,7 +69,7 @@ def taxonomy2fields(taxonomy, field, separator="\t", subfields_suffix="_ss"):
 
 	result = {}
 
-	# if not multivalued field, convert to used list/array strucutre
+	# if not multivalued field, convert to used list/array structure
 	if not isinstance(taxonomy, list):
 		taxonomy = [taxonomy]
 
@@ -246,7 +246,7 @@ class OntologyTagger(Graph):
 		
 			preferred_label = self.preferredLabel(subject=subject, lang=lang, labelProperties=self.labelProperties)
 
-			# if no label in preferred language, try with english, if not preferred lang is english yet)
+			# if no label in preferred language, try with english, if not preferred lang is english yet
 			if not preferred_label and not lang == 'en':
 				
 				preferred_label = self.preferredLabel(subject=subject, lang='en', labelProperties=self.labelProperties)
@@ -519,7 +519,7 @@ class OntologyTagger(Graph):
 					data['all_labels_ss'].append(label)
 				data['skos_hiddenLabel_txt'] = data['skos_hiddenLabel_ss']
 				
-				# additional all labels fields for additional/multiple/language sensetive taggers/analyzers/stemmers
+				# additional all labels fields for additional/multiple/language sensitive taggers/analyzers/stemmers
 				for additional_all_labels_field in self.additional_all_labels_fields:
 					data[additional_all_labels_field] = data['all_labels_ss']
 
@@ -543,7 +543,7 @@ class OntologyTagger(Graph):
 	
 		self.synonyms_dictionary = {}
 	
-		# since this is returing subjects more than one time ...
+		# since this is returning subjects more than one time ...
 		#for s in g.subjects(predicate=None, object=None):
 	
 		# we use a SPARQL query with distinct to get subjects only once
