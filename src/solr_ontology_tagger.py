@@ -560,7 +560,10 @@ class OntologyTagger(Graph):
 	
 			# add concept to configs / entities index and/or tag documents
 			self.import_entity(s, target_facet=target_facet, queryfields=queryfields, lang=lang, narrower=narrower)
-		
+
+		# Solr commit
+		self.connector.commit()
+
 		# for performance issues write the (before collected) synonyms dictionary to Solr at once
 		if self.synonyms_resourceid:
 			self.synonyms2solr()
