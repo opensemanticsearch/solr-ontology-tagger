@@ -201,11 +201,14 @@ class OntologyTagger(Graph):
 		# append RDFS.labels
 		for label in self.objects(subject=subject, predicate=rdflib.RDFS.label):
 
-			if self.languages:
-				if label.language in self.languages:
+			label = str(label)
+
+			if label not in labels:
+				if self.languages:
+					if label.language in self.languages:
+						labels.append(label)
+				else:
 					labels.append(label)
-			else:
-				labels.append(label)
 
 		#
 		# append SKOS labels
@@ -215,27 +218,38 @@ class OntologyTagger(Graph):
 		skos = rdflib.Namespace('http://www.w3.org/2004/02/skos/core#')
 		for label in self.objects(subject=subject, predicate=skos['prefLabel']):
 
-			if self.languages:
-				if label.language in self.languages:
+			label = str(label)
+
+			if label not in labels:
+				if self.languages:
+					if label.language in self.languages:
+						labels.append(label)
+				else:
 					labels.append(label)
-			else:
-				labels.append(label)
 
 		# append SKOS altLabels
 		for label in self.objects(subject=subject, predicate=skos['altLabel']):
-			if self.languages:
-				if label.language in self.languages:
+
+			label = str(label)
+
+			if label not in labels:
+				if self.languages:
+					if label.language in self.languages:
+						labels.append(label)
+				else:
 					labels.append(label)
-			else:
-				labels.append(label)
 
 		# append SKOS hiddenLabels
 		for label in self.objects(subject=subject, predicate=skos['hiddenLabel']):
-			if self.languages:
-				if label.language in self.languages:
+
+			label = str(label)
+
+			if label not in labels:
+				if self.languages:
+					if label.language in self.languages:
+						labels.append(label)
+				else:
 					labels.append(label)
-			else:
-				labels.append(label)
 
 		return labels
 
@@ -389,8 +403,11 @@ class OntologyTagger(Graph):
 					labels.extend( self.get_labels(o) )
 
 
+			# remove duplicates
+			labels = list(dict.fromkeys(labels))
+
 			#
-			# Append labes to list for dictionary based named entity extraction
+			# Append labels to list for dictionary based named entity extraction
 			#
 
 			if self.labels_configfile:
@@ -488,8 +505,11 @@ class OntologyTagger(Graph):
 				data['label_ss'] = []
 				# get all labels for this obj
 				for label in self.objects(subject=s, predicate=rdflib.RDFS.label):
-					data['label_ss'].append(label)
-					data['all_labels_ss'].append(label)
+					label = str(label)
+					if label not in data['label_ss']:
+						data['label_ss'].append(label)
+					if label not in data['all_labels_ss']:
+						data['all_labels_ss'].append(label)
 				data['label_txt'] = data['label_ss']
 		
 				#
@@ -500,25 +520,34 @@ class OntologyTagger(Graph):
 				data['skos_prefLabel_ss'] = []
 
 				for label in self.objects(subject=s, predicate=skos['prefLabel']):
-					data['skos_prefLabel_ss'].append(label)
-					data['all_labels_ss'].append(label)
+					label = str(label)
+					if label not in data['skos_prefLabel_ss']:
+						data['skos_prefLabel_ss'].append(label)
+					if label not in data['all_labels_ss']:
+						data['all_labels_ss'].append(label)
 				data['skos_prefLabel_txt'] = data['skos_prefLabel_ss']
 		
 				# append SKOS altLabels
 				data['skos_altLabel_ss'] = []
 
 				for label in self.objects(subject=s, predicate=skos['altLabel']):
-					data['skos_altLabel_ss'].append(label)
-					data['all_labels_ss'].append(label)
+					label = str(label)
+					if label not in data['skos_altLabel_ss']:
+						data['skos_altLabel_ss'].append(label)
+					if label not in data['all_labels_ss']:
+						data['all_labels_ss'].append(label)
 				data['skos_altLabel_txt'] = data['skos_altLabel_ss']
 		
 				# append SKOS hiddenLabels
 				data['skos_hiddenLabel_ss'] = []
 				for label in self.objects(subject=s, predicate=skos['hiddenLabel']):
-					data['skos_hiddenLabel_ss'].append(label)
-					data['all_labels_ss'].append(label)
+					label = str(label)
+					if label not in data['skos_hiddenLabel_ss']:
+						data['skos_hiddenLabel_ss'].append(label)
+					if label not in data['all_labels_ss']:
+						data['all_labels_ss'].append(label)
 				data['skos_hiddenLabel_txt'] = data['skos_hiddenLabel_ss']
-				
+
 				# additional all labels fields for additional/multiple/language sensitive taggers/analyzers/stemmers
 				for additional_all_labels_field in self.additional_all_labels_fields:
 					data[additional_all_labels_field] = data['all_labels_ss']
